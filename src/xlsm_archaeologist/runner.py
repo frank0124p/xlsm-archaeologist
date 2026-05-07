@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from xlsm_archaeologist.analyzers.dependency_analyzer import graph_to_json, run_dependency_analysis
 from xlsm_archaeologist.analyzers.formula_analyzer import analyze_formulas
 from xlsm_archaeologist.analyzers.vba_analyzer import analyze_vba
 from xlsm_archaeologist.extractors.cell_extractor import extract_cells
@@ -67,6 +68,15 @@ _VALIDATIONS_COLUMNS = [
     "allow_blank",
     "error_title",
     "error_message",
+]
+
+_DEPENDENCIES_COLUMNS = [
+    "dependency_id",
+    "source_qualified_address",
+    "target_qualified_address",
+    "via",
+    "via_detail",
+    "is_cross_sheet",
 ]
 
 
@@ -167,7 +177,7 @@ def run_extraction(
     all_warnings: list[str] = []
 
     with ProgressBar(quiet=quiet) as bar:
-        task = bar.add_task("Extraction + Analysis", total=8)
+        task = bar.add_task("Extraction + Analysis", total=9)
 
         # --- Step 1: Workbook metadata ---
         workbook_record, wb = extract_workbook(input_path)
@@ -210,6 +220,14 @@ def run_extraction(
         vba_warnings: list[str] = []
         vba_modules, vba_procedures = analyze_vba(input_path, vba_warnings)
         all_warnings.extend(vba_warnings)
+        bar.advance(task)
+
+        # --- Step 5d: Dependency graph ---
+        dep_warnings: list[str] = []
+        _graph, dep_edges, cycles, orphan_ids, cells = run_dependency_analysis(
+            formulas, vba_procedures, named_ranges, cells, validations, dep_warnings
+        )
+        all_warnings.extend(dep_warnings)
         bar.advance(task)
 
         # --- Step 6: Write files ---
@@ -258,6 +276,31 @@ def run_extraction(
         write_json(
             output_dir / "08_vba_procedures.json",
             {"vba_procedures": [p.model_dump() for p in vba_procedures]},
+        )
+
+        write_csv(
+            output_dir / "09_dependencies.csv",
+            [e.model_dump() for e in dep_edges],
+            _DEPENDENCIES_COLUMNS,
+        )
+
+        write_json(
+            output_dir / "10_dependency_graph.json",
+            graph_to_json(_graph, cycles),
+        )
+
+        # Rewrite 04_cells.csv with backfilled is_referenced
+        write_csv(
+            output_dir / "04_cells.csv",
+            [c.model_dump() for c in cells],
+            _CELLS_COLUMNS,
+        )
+
+        reports_dir = output_dir / "reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        write_json(
+            reports_dir / "cycles.json",
+            {"cycles": [c.model_dump() for c in cycles]},
         )
 
         bar.advance(task)
