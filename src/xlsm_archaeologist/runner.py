@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from xlsm_archaeologist.analyzers.formula_analyzer import analyze_formulas
+from xlsm_archaeologist.analyzers.vba_analyzer import analyze_vba
 from xlsm_archaeologist.extractors.cell_extractor import extract_cells
 from xlsm_archaeologist.extractors.named_range_extractor import extract_named_ranges
 from xlsm_archaeologist.extractors.sheet_extractor import extract_sheets
@@ -163,9 +164,10 @@ def run_extraction(
         log_level: Logging verbosity level string.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
+    all_warnings: list[str] = []
 
     with ProgressBar(quiet=quiet) as bar:
-        task = bar.add_task("Extraction + Analysis", total=7)
+        task = bar.add_task("Extraction + Analysis", total=8)
 
         # --- Step 1: Workbook metadata ---
         workbook_record, wb = extract_workbook(input_path)
@@ -201,6 +203,13 @@ def run_extraction(
             key=lambda f: f.qualified_address,
         )
         formulas = [f.model_copy(update={"formula_id": i + 1}) for i, f in enumerate(formulas)]
+        all_warnings.extend(formula_warnings)
+        bar.advance(task)
+
+        # --- Step 5c: VBA analysis ---
+        vba_warnings: list[str] = []
+        vba_modules, vba_procedures = analyze_vba(input_path, vba_warnings)
+        all_warnings.extend(vba_warnings)
         bar.advance(task)
 
         # --- Step 6: Write files ---
@@ -241,15 +250,24 @@ def run_extraction(
             _VALIDATIONS_COLUMNS,
         )
 
+        write_json(
+            output_dir / "07_vba_modules.json",
+            {"vba_modules": [m.model_dump() for m in vba_modules]},
+        )
+
+        write_json(
+            output_dir / "08_vba_procedures.json",
+            {"vba_procedures": [p.model_dump() for p in vba_procedures]},
+        )
+
         bar.advance(task)
 
     wb.close()
     logger.info(
-        "Complete → %s  (%d sheets, %d named ranges, %d cells, %d formulas, %d validations)",
+        "Complete → %s  (%d sheets, %d formulas, %d vba_modules, %d vba_procs)",
         output_dir,
         len(sheets),
-        len(named_ranges),
-        len(cells),
         len(formulas),
-        len(validations),
+        len(vba_modules),
+        len(vba_procedures),
     )
