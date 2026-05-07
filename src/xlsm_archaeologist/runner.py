@@ -12,6 +12,12 @@ from xlsm_archaeologist.extractors.named_range_extractor import extract_named_ra
 from xlsm_archaeologist.extractors.sheet_extractor import extract_sheets
 from xlsm_archaeologist.extractors.validation_extractor import extract_validations
 from xlsm_archaeologist.extractors.workbook_extractor import extract_workbook
+from xlsm_archaeologist.reports.cross_sheet_refs_report import build_cross_sheet_refs
+from xlsm_archaeologist.reports.formula_categories_report import build_categories_report
+from xlsm_archaeologist.reports.hotspot_cells_report import build_hotspot_cells
+from xlsm_archaeologist.reports.summary_builder import build_summary
+from xlsm_archaeologist.reports.top_complex_formulas_report import build_top_complex_formulas
+from xlsm_archaeologist.reports.vba_behavior_report import build_vba_behavior
 from xlsm_archaeologist.serializers.csv_writer import write_csv
 from xlsm_archaeologist.serializers.json_writer import write_json
 from xlsm_archaeologist.utils.logging import get_logger
@@ -177,7 +183,7 @@ def run_extraction(
     all_warnings: list[str] = []
 
     with ProgressBar(quiet=quiet) as bar:
-        task = bar.add_task("Extraction + Analysis", total=9)
+        task = bar.add_task("Extraction + Analysis", total=10)
 
         # --- Step 1: Workbook metadata ---
         workbook_record, wb = extract_workbook(input_path)
@@ -298,6 +304,7 @@ def run_extraction(
 
         reports_dir = output_dir / "reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
+
         write_json(
             reports_dir / "cycles.json",
             {"cycles": [c.model_dump() for c in cycles]},
@@ -305,12 +312,71 @@ def run_extraction(
 
         bar.advance(task)
 
+        # --- Step 9: Phase 6 reports ---
+        from xlsm_archaeologist import __version__
+
+        summary = build_summary(
+            input_path=input_path,
+            tool_version=__version__,
+            sheets=sheets,
+            named_ranges=named_ranges,
+            formulas=formulas,
+            validations=validations,
+            vba_modules=vba_modules,
+            vba_procedures=vba_procedures,
+            dep_edges=dep_edges,
+            cycles=cycles,
+            orphan_ids=orphan_ids,
+            raw_warnings=all_warnings,
+        )
+
+        write_json(output_dir / "00_summary.json", summary.model_dump())
+
+        write_csv(
+            reports_dir / "formula_categories.csv",
+            build_categories_report(formulas),
+            ["category", "formula_count", "total_complexity", "avg_complexity",
+             "max_complexity", "pct_of_total"],
+        )
+
+        write_csv(
+            reports_dir / "top_complex_formulas.csv",
+            build_top_complex_formulas(formulas),
+            ["rank", "qualified_address", "formula_text", "formula_category",
+             "nesting_depth", "function_count", "referenced_cell_count", "complexity_score"],
+        )
+
+        write_csv(
+            reports_dir / "hotspot_cells.csv",
+            build_hotspot_cells(_graph, cells),
+            ["rank", "qualified_address", "node_type", "in_degree",
+             "referenced_by_formula_count", "referenced_by_vba_count", "value_type", "raw_value"],
+        )
+
+        write_csv(
+            reports_dir / "vba_behavior.csv",
+            build_vba_behavior(vba_procedures, vba_modules),
+            ["module_name", "procedure_name", "procedure_type", "line_count",
+             "read_count", "write_count", "cross_sheet_read_count", "cross_sheet_write_count",
+             "has_dynamic_range", "has_event_trigger", "call_count", "complexity_score"],
+        )
+
+        write_csv(
+            reports_dir / "cross_sheet_refs.csv",
+            build_cross_sheet_refs(dep_edges),
+            ["source_qualified_address", "source_sheet", "target_qualified_address",
+             "target_sheet", "via", "via_detail"],
+        )
+
+        bar.advance(task)
+
     wb.close()
     logger.info(
-        "Complete → %s  (%d sheets, %d formulas, %d vba_modules, %d vba_procs)",
+        "Complete → %s  score=%d difficulty=%s  (%d sheets, %d formulas, %d warnings)",
         output_dir,
+        summary.complexity_score,
+        summary.migration_difficulty,
         len(sheets),
         len(formulas),
-        len(vba_modules),
-        len(vba_procedures),
+        len(all_warnings),
     )
