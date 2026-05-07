@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>xlsm-archaeologist Viewer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3348;
+    --accent: #5b8dee;
+    --accent2: #7c5cbf;
+    --text: #e2e8f0;
+    --text2: #8892a4;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --orange: #fb923c;
+    --purple: #a78bfa;
+    --radius: 8px;
+    --font: 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; min-height: 100vh; }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 { font-size: 16px; font-weight: 700; color: var(--accent); letter-spacing: -.3px; }
+  header .subtitle { color: var(--text2); font-size: 12px; }
+  header .spacer { flex: 1; }
+  #reload-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all .15s;
+  }
+  #reload-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ── Upload screen ── */
+  #upload-screen {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 24px;
+    padding: 40px;
+  }
+  .drop-zone {
+    width: 560px;
+    max-width: 100%;
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 48px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    background: var(--surface);
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #1e2540;
+  }
+  .drop-zone .icon { font-size: 48px; margin-bottom: 16px; }
+  .drop-zone h2 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+  .drop-zone p { color: var(--text2); font-size: 13px; }
+  .drop-zone label {
+    display: inline-block;
+    margin-top: 20px;
+    background: var(--accent);
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: opacity .15s;
+  }
+  .drop-zone label:hover { opacity: .85; }
+  #folder-input { display: none; }
+
+  /* ── Main viewer ── */
+  #viewer { display: none; flex: 1; flex-direction: column; }
+  #viewer.visible { display: flex; }
+
+  /* ── Tab bar ── */
+  #tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    overflow-x: auto;
+    padding: 0 16px;
+    gap: 2px;
+  }
+  .tab {
+    padding: 14px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all .15s;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .badge {
+    display: inline-block;
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+  }
+  .tab.active .badge { background: #1e2e55; color: var(--accent); }
+
+  /* ── Content panels ── */
+  #panels { flex: 1; overflow: auto; padding: 24px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Stats grid ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+  }
+  .stat .value { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stat .label { font-size: 11px; color: var(--text2); margin-top: 6px; text-transform: uppercase; letter-spacing: .4px; }
+
+  /* ── Difficulty badge ── */
+  .difficulty {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .difficulty.low { background: #0d3321; color: var(--green); border: 1px solid #1a5c3a; }
+  .difficulty.medium { background: #3b2800; color: var(--yellow); border: 1px solid #6b4800; }
+  .difficulty.high { background: #3b1400; color: var(--orange); border: 1px solid #7c2e00; }
+  .difficulty.very_high { background: #3b0a0a; color: var(--red); border: 1px solid #7c1c1c; }
+
+  /* ── Risk grid ── */
+  .risk-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .risk-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+  .risk-item .risk-label { color: var(--text2); font-size: 12px; }
+  .risk-item .risk-value { font-weight: 700; font-size: 16px; }
+  .risk-item.warn .risk-value { color: var(--yellow); }
+  .risk-item.danger .risk-value { color: var(--red); }
+  .risk-item.ok .risk-value { color: var(--green); }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    background: var(--surface2);
+    cursor: pointer;
+    user-select: none;
+  }
+  th:hover { color: var(--text); }
+  th.sorted-asc::after { content: ' ↑'; }
+  th.sorted-desc::after { content: ' ↓'; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill.true  { background: #0d3321; color: var(--green); }
+  .pill.false { background: var(--surface2); color: var(--text2); }
+  .pill.lookup   { background: #1a2e50; color: #7eb3ff; }
+  .pill.branch   { background: #2e1a50; color: #b07eff; }
+  .pill.compute  { background: #1a3030; color: #4dd9c0; }
+  .pill.aggregate{ background: #2e2a10; color: #f0c040; }
+  .pill.text     { background: #2a2020; color: #f08080; }
+  .pill.reference{ background: #202a20; color: #80c080; }
+  .pill.mixed    { background: #2e2010; color: #f0a040; }
+
+  /* ── Warnings ── */
+  .warning-list { display: flex; flex-direction: column; gap: 8px; }
+  .warning-item {
+    display: flex;
+    gap: 12px;
+    background: var(--surface2);
+    border-left: 3px solid var(--border);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 14px;
+    font-size: 12px;
+  }
+  .warning-item.error { border-left-color: var(--red); }
+  .warning-item.warning { border-left-color: var(--yellow); }
+  .warning-item.info { border-left-color: var(--accent); }
+  .warning-level { font-weight: 700; min-width: 56px; }
+  .warning-location { color: var(--text2); font-family: var(--mono); }
+  .warning-msg { color: var(--text); }
+
+  /* ── Charts ── */
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .chart-box h3 { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 16px; }
+  .chart-container { position: relative; height: 240px; }
+  @media (max-width: 700px) { .chart-row { grid-template-columns: 1fr; } }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--text2);
+  }
+  .empty .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty p { font-size: 13px; }
+
+  /* ── Search ── */
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .search-bar input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .search-bar input:focus { border-color: var(--accent); }
+  .search-bar input::placeholder { color: var(--text2); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── File info bar ── */
+  .file-info-bar {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 24px;
+    font-size: 12px;
+    color: var(--text2);
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .file-info-bar strong { color: var(--text); }
+
+  /* ── Code block ── */
+  .code-block {
+    background: #0a0c12;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #a8b3c8;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* ── Section header ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-header h2 { font-size: 15px; font-weight: 600; }
+  .count-badge {
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  /* ── Pagination ── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .pagination button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .pagination button:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
+  .pagination button:disabled { opacity: .4; cursor: default; }
+
+  /* ── Top bar for analyze cmd ── */
+  .cli-hint {
+    background: #0a0c12;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #a8b3c8;
+    margin-bottom: 16px;
+  }
+  .cli-hint .prompt { color: #5b8dee; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span>🪲</span>
+    <h1>xlsm-archaeologist</h1>
+    <span class="subtitle">Report Viewer</span>
+    <div class="spacer"></div>
+    <button id="reload-btn" onclick="resetViewer()">← 重新載入</button>
+  </header>
+
+  <!-- Upload screen -->
+  <div id="upload-screen">
+    <div class="drop-zone" id="drop-zone">
+      <div class="icon">📂</div>
+      <h2>載入 archaeology_output 資料夾</h2>
+      <p>把整個 <code>archaeology_output/</code> 資料夾拖曳到這裡<br>或點擊下方按鈕選擇資料夾</p>
+      <label>
+        選擇資料夾
+        <input type="file" id="folder-input" webkitdirectory multiple accept=".json,.csv">
+      </label>
+    </div>
+    <p style="color:var(--text2);font-size:12px;text-align:center">
+      也可以把產生的 JSON / CSV 檔案直接拖入<br>
+      不需要伺服器，純瀏覽器本地處理
+    </p>
+  </div>
+
+  <!-- Main viewer -->
+  <div id="viewer">
+    <div class="file-info-bar" id="file-info-bar"></div>
+    <div id="tabs">
+      <div class="tab active" data-tab="summary">摘要</div>
+      <div class="tab" data-tab="workbook">Workbook</div>
+      <div class="tab" data-tab="sheets">Sheets <span class="badge" id="badge-sheets">0</span></div>
+      <div class="tab" data-tab="named-ranges">Named Ranges <span class="badge" id="badge-named-ranges">0</span></div>
+      <div class="tab" data-tab="cells">Cells <span class="badge" id="badge-cells">0</span></div>
+      <div class="tab" data-tab="validations">Validations <span class="badge" id="badge-validations">0</span></div>
+      <div class="tab" data-tab="formulas">Formulas <span class="badge" id="badge-formulas">0</span></div>
+      <div class="tab" data-tab="vba">VBA <span class="badge" id="badge-vba">0</span></div>
+      <div class="tab" data-tab="dependencies">Dependencies <span class="badge" id="badge-dependencies">0</span></div>
+      <div class="tab" data-tab="reports">Reports</div>
+    </div>
+    <div id="panels">
+      <div class="panel active" id="panel-summary"></div>
+      <div class="panel" id="panel-workbook"></div>
+      <div class="panel" id="panel-sheets"></div>
+      <div class="panel" id="panel-named-ranges"></div>
+      <div class="panel" id="panel-cells"></div>
+      <div class="panel" id="panel-validations"></div>
+      <div class="panel" id="panel-formulas"></div>
+      <div class="panel" id="panel-vba"></div>
+      <div class="panel" id="panel-dependencies"></div>
+      <div class="panel" id="panel-reports"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const DATA = {};
+const CHARTS = {};
+
+// ── CSV Parser ────────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  // strip BOM
+  text = text.replace(/^\uFEFF/, '');
+  const lines = text.split('\n').filter(l => l.trim());
+  if (!lines.length) return [];
+  const headers = splitCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = splitCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
+    return obj;
+  });
+}
+
+function splitCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── File loader ───────────────────────────────────────────────────────────────
+async function loadFiles(files) {
+  const map = {};
+  for (const f of files) {
+    const name = f.name.replace(/^.*[/\\]/, '');
+    map[name] = f;
+  }
+  const load = async (name) => {
+    if (!map[name]) return null;
+    return map[name].text();
+  };
+
+  DATA.summary    = JSON.parse(await load('00_summary.json') || 'null');
+  DATA.workbook   = JSON.parse(await load('01_workbook.json') || 'null');
+  DATA.sheets     = parseCSV(await load('02_sheets.csv') || '');
+  DATA.namedRanges= parseCSV(await load('03_named_ranges.csv') || '');
+  DATA.cells      = parseCSV(await load('04_cells.csv') || '');
+  DATA.formulas   = JSON.parse(await load('05_formulas.json') || 'null');
+  DATA.validations= parseCSV(await load('06_validations.csv') || '');
+  DATA.vbaModules = JSON.parse(await load('07_vba_modules.json') || 'null');
+  DATA.vbaProcedures = JSON.parse(await load('08_vba_procedures.json') || 'null');
+  DATA.dependencies= parseCSV(await load('09_dependencies.csv') || '');
+  DATA.depGraph   = JSON.parse(await load('10_dependency_graph.json') || 'null');
+
+  // reports/
+  const reportFiles = ['formula_categories.csv','top_complex_formulas.csv',
+    'hotspot_cells.csv','vba_behavior.csv','orphans.csv','cross_sheet_refs.csv'];
+  DATA.reports = {};
+  for (const rf of reportFiles) {
+    const txt = await load(rf);
+    if (txt) DATA.reports[rf.replace('.csv','').replace('.json','')] = parseCSV(txt);
+  }
+  DATA.reports.cycles = JSON.parse(await load('cycles.json') || 'null');
+
+  renderAll();
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('viewer').classList.add('visible');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const bool2pill = v => `<span class="pill ${v === 'true' || v === true}">${v === 'true' || v === true ? '✓' : '✗'}</span>`;
+const difficultyHtml = d => {
+  const icons = { low: '🟢', medium: '🟡', high: '🟠', very_high: '🔴' };
+  return `<span class="difficulty ${d ?? 'low'}">${icons[d] ?? '⚪'} ${(d ?? '—').toUpperCase().replace('_',' ')}</span>`;
+};
+const catPill = c => `<span class="pill ${c}">${c ?? ''}</span>`;
+
+function fmt(n) { return Number(n).toLocaleString(); }
+
+// Sortable table state
+const sortState = {};
+function sortTable(tableId, colIndex, colKey) {
+  const s = sortState[tableId] || { col: -1, dir: 1 };
+  if (s.col === colIndex) s.dir = -s.dir; else { s.col = colIndex; s.dir = 1; }
+  sortState[tableId] = s;
+  // update headers
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  table.querySelectorAll('th').forEach((th, i) => {
+    th.classList.remove('sorted-asc','sorted-desc');
+    if (i === colIndex) th.classList.add(s.dir === 1 ? 'sorted-asc' : 'sorted-desc');
+  });
+  // sort rows
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.rows);
+  rows.sort((a, b) => {
+    const av = a.cells[colIndex]?.dataset?.val ?? a.cells[colIndex]?.textContent ?? '';
+    const bv = b.cells[colIndex]?.dataset?.val ?? b.cells[colIndex]?.textContent ?? '';
+    const an = parseFloat(av), bn = parseFloat(bv);
+    if (!isNaN(an) && !isNaN(bn)) return (an - bn) * s.dir;
+    return av.localeCompare(bv) * s.dir;
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+// Search / filter
+function filterTable(inputId, tableId) {
+  const q = document.getElementById(inputId)?.value.toLowerCase() ?? '';
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  table.querySelectorAll('tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// Generic table builder
+function buildTable(id, headers, rows, renderRow) {
+  const colKeys = headers.map(h => typeof h === 'string' ? h : h.key);
+  const colLabels = headers.map(h => typeof h === 'string' ? h : h.label);
+  let html = `<table id="${id}"><thead><tr>`;
+  colLabels.forEach((l, i) => {
+    html += `<th onclick="sortTable('${id}',${i},'${colKeys[i]}')">${esc(l)}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  rows.forEach(row => { html += renderRow(row); });
+  html += '</tbody></table>';
+  return html;
+}
+
+// ── Render all ────────────────────────────────────────────────────────────────
+function renderAll() {
+  updateBadges();
+  renderFileInfoBar();
+  renderSummary();
+  renderWorkbook();
+  renderSheets();
+  renderNamedRanges();
+  renderCells();
+  renderValidations();
+  renderFormulas();
+  renderVBA();
+  renderDependencies();
+  renderReports();
+}
+
+function updateBadges() {
+  const b = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = fmt(n); };
+  b('badge-sheets', DATA.sheets?.length ?? 0);
+  b('badge-named-ranges', DATA.namedRanges?.length ?? 0);
+  b('badge-cells', DATA.cells?.length ?? 0);
+  b('badge-validations', DATA.validations?.length ?? 0);
+  b('badge-formulas', DATA.formulas?.formulas?.length ?? 0);
+  b('badge-vba', (DATA.vbaProcedures?.procedures?.length ?? 0));
+  b('badge-dependencies', DATA.dependencies?.length ?? 0);
+}
+
+function renderFileInfoBar() {
+  const el = document.getElementById('file-info-bar');
+  if (!el) return;
+  const s = DATA.summary;
+  const wb = DATA.workbook?.workbook;
+  if (!s && !wb) { el.innerHTML = ''; return; }
+  const path = s?.input_file?.path ?? wb?.file_path ?? '—';
+  const sha = (s?.input_file?.sha256 ?? wb?.file_sha256 ?? '').slice(0,16);
+  const size = s?.input_file?.size_bytes ?? wb?.size_bytes;
+  const at = s?.analyzed_at ? new Date(s.analyzed_at).toLocaleString('zh-TW') : '—';
+  el.innerHTML = `
+    <span>📄 <strong>${esc(path)}</strong></span>
+    ${sha ? `<span>sha256: <strong>${sha}…</strong></span>` : ''}
+    ${size ? `<span>大小: <strong>${(size/1024).toFixed(1)} KB</strong></span>` : ''}
+    <span>分析時間: <strong>${esc(at)}</strong></span>
+  `;
+}
+
+// ── Summary ───────────────────────────────────────────────────────────────────
+function renderSummary() {
+  const el = document.getElementById('panel-summary');
+  const s = DATA.summary;
+  if (!s) {
+    el.innerHTML = `<div class="empty"><div class="icon">📋</div><p>00_summary.json 尚未載入<br>請先跑完所有 phase 才會產生此檔</p></div>`;
+    return;
+  }
+  const st = s.stats ?? {};
+  const ri = s.risk_indicators ?? {};
+  const warns = s.warnings ?? [];
+
+  const stats = [
+    { label: 'Sheets', value: st.sheet_count ?? 0 },
+    { label: 'Named Ranges', value: st.named_range_count ?? 0 },
+    { label: 'Formulas', value: st.formula_count ?? 0 },
+    { label: 'Validations', value: st.validation_count ?? 0 },
+    { label: 'VBA Modules', value: st.vba_module_count ?? 0 },
+    { label: 'VBA Procedures', value: st.vba_procedure_count ?? 0 },
+    { label: 'Dep. Edges', value: st.dependency_edge_count ?? 0 },
+  ];
+
+  const riskItems = [
+    { label: '循環引用', value: ri.circular_reference_count ?? 0, threshold: 1 },
+    { label: '外部引用', value: ri.external_reference_count ?? 0, threshold: 1 },
+    { label: 'Volatile 函式', value: ri.volatile_function_count ?? 0, threshold: 5 },
+    { label: 'VBA 動態 Range', value: ri.dynamic_vba_range_count ?? 0, threshold: 1 },
+    { label: '深巢狀公式', value: ri.deeply_nested_formula_count ?? 0, threshold: 5 },
+    { label: '孤島公式', value: ri.orphan_formula_count ?? 0, threshold: 10 },
+    { label: '跨 Sheet 依賴', value: ri.cross_sheet_dependency_count ?? 0, threshold: 50 },
+  ];
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">遷移難度</div>
+        ${difficultyHtml(s.migration_difficulty)}
+      </div>
+      <div style="flex:1"></div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.4px">Complexity Score</div>
+        <div style="font-size:36px;font-weight:800;color:var(--text)">${fmt(s.complexity_score ?? 0)}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📊 統計數字</div>
+      <div class="stats-grid">
+        ${stats.map(s => `<div class="stat"><div class="value">${fmt(s.value)}</div><div class="label">${s.label}</div></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚠️ 風險指標</div>
+      <div class="risk-grid">
+        ${riskItems.map(r => {
+          const cls = r.value === 0 ? 'ok' : r.value >= r.threshold * 2 ? 'danger' : 'warn';
+          return `<div class="risk-item ${cls}">
+            <span class="risk-label">${r.label}</span>
+            <span class="risk-value">${fmt(r.value)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    ${warns.length ? `
+    <div class="card">
+      <div class="card-title">🔔 Warnings (${warns.length})</div>
+      <div class="warning-list">
+        ${warns.map(w => `
+          <div class="warning-item ${w.level}">
+            <span class="warning-level" style="color:${w.level==='error'?'var(--red)':w.level==='warning'?'var(--yellow)':'var(--accent)'}">${w.level.toUpperCase()}</span>
+            <span class="warning-location">[${esc(w.location ?? '')}]</span>
+            <span class="warning-msg">${esc(w.message)}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : `
+    <div class="card" style="text-align:center;padding:28px">
+      <span style="font-size:24px">✅</span>
+      <p style="color:var(--green);margin-top:8px;font-weight:600">0 warnings — 分析完成無問題</p>
+    </div>`}
+  `;
+}
+
+// ── Workbook ──────────────────────────────────────────────────────────────────
+function renderWorkbook() {
+  const el = document.getElementById('panel-workbook');
+  const wb = DATA.workbook?.workbook;
+  if (!wb) { el.innerHTML = emptyState('01_workbook.json 尚未載入'); return; }
+  const rows = Object.entries(wb).map(([k, v]) => {
+    let display = esc(v ?? '—');
+    if (typeof v === 'boolean') display = bool2pill(v);
+    return `<tr><td style="color:var(--text2);font-family:var(--mono);font-size:12px;width:220px">${esc(k)}</td><td>${display}</td></tr>`;
+  });
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">📄 Workbook Metadata</div>
+      <div class="table-wrap">
+        <table><tbody>${rows.join('')}</tbody></table>
+      </div>
+    </div>`;
+}
+
+// ── Sheets ────────────────────────────────────────────────────────────────────
+function renderSheets() {
+  const el = document.getElementById('panel-sheets');
+  const rows = DATA.sheets ?? [];
+  if (!rows.length) { el.innerHTML = emptyState('02_sheets.csv 尚未載入'); return; }
+  const html = buildTable('tbl-sheets',
+    [{key:'sheet_id',label:'#'},{key:'sheet_name',label:'Name'},{key:'used_range',label:'Used Range'},
+     {key:'row_count',label:'Rows'},{key:'col_count',label:'Cols'},{key:'cell_count',label:'Cells'},
+     {key:'formula_cell_count',label:'Formulas'},{key:'is_hidden',label:'Hidden'},{key:'is_very_hidden',label:'Very Hidden'}],
+    rows,
+    r => `<tr>
+      <td>${esc(r.sheet_id)}</td>
+      <td><strong>${esc(r.sheet_name)}</strong></td>
+      <td class="mono">${esc(r.used_range)}</td>
+      <td data-val="${r.row_count}">${fmt(r.row_count)}</td>
+      <td data-val="${r.col_count}">${fmt(r.col_count)}</td>
+      <td data-val="${r.cell_count}">${fmt(r.cell_count)}</td>
+      <td data-val="${r.formula_cell_count}">${fmt(r.formula_cell_count)}</td>
+      <td>${bool2pill(r.is_hidden)}</td>
+      <td>${bool2pill(r.is_very_hidden)}</td>
+    </tr>`);
+  el.innerHTML = `<div class="card"><div class="card-title">📋 Sheets (${rows.length})</div><div class="table-wrap">${html}</div></div>`;
+}
+
+// ── Named Ranges ──────────────────────────────────────────────────────────────
+function renderNamedRanges() {
+  const el = document.getElementById('panel-named-ranges');
+  const rows = DATA.namedRanges ?? [];
+  if (!rows.length) { el.innerHTML = emptyState('03_named_ranges.csv 尚未載入'); return; }
+  const html = buildTable('tbl-nr',
+    [{key:'range_name',label:'Name'},{key:'scope',label:'Scope'},{key:'refers_to',label:'Refers To'},
+     {key:'has_dynamic_formula',label:'Dynamic'},{key:'is_valid',label:'Valid'}],
+    rows,
+    r => `<tr>
+      <td><strong>${esc(r.range_name)}</strong></td>
+      <td><span style="color:var(--text2)">${esc(r.scope)}</span></td>
+      <td class="mono" style="max-width:320px;overflow:hidden;text-overflow:ellipsis">${esc(r.refers_to)}</td>
+      <td>${bool2pill(r.has_dynamic_formula)}</td>
+      <td>${bool2pill(r.is_valid)}</td>
+    </tr>`);
+  el.innerHTML = `<div class="card"><div class="card-title">🏷️ Named Ranges (${rows.length})</div><div class="table-wrap">${html}</div></div>`;
+}
+
+// ── Cells ─────────────────────────────────────────────────────────────────────
+const CELLS_PAGE_SIZE = 200;
+let cellsPage = 0, cellsFiltered = [];
+
+function renderCells() {
+  const el = document.getElementById('panel-cells');
+  cellsFiltered = DATA.cells ?? [];
+  cellsPage = 0;
+  renderCellsPage(el);
+}
+
+function renderCellsPage(el) {
+  if (!cellsFiltered.length) { el.innerHTML = emptyState('04_cells.csv 尚未載入或無有意義 cell'); return; }
+  const start = cellsPage * CELLS_PAGE_SIZE;
+  const pageRows = cellsFiltered.slice(start, start + CELLS_PAGE_SIZE);
+  const total = cellsFiltered.length;
+  const pages = Math.ceil(total / CELLS_PAGE_SIZE);
+
+  const html = buildTable('tbl-cells',
+    [{key:'qualified_address',label:'Address'},{key:'value_type',label:'Type'},
+     {key:'has_formula',label:'Formula'},{key:'has_validation',label:'Validation'},
+     {key:'is_named',label:'Named'},{key:'is_referenced',label:'Referenced'},{key:'raw_value',label:'Value'}],
+    pageRows,
+    r => `<tr>
+      <td class="mono">${esc(r.qualified_address)}</td>
+      <td><span style="color:var(--text2)">${esc(r.value_type)}</span></td>
+      <td>${bool2pill(r.has_formula)}</td>
+      <td>${bool2pill(r.has_validation)}</td>
+      <td>${bool2pill(r.is_named)}</td>
+      <td>${bool2pill(r.is_referenced)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.raw_value)}">${esc(r.raw_value)}</td>
+    </tr>`);
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">🔢 Cells (${fmt(total)})</div>
+      <div class="search-bar">
+        <input id="cell-search" placeholder="搜尋 address / value…" oninput="cellSearch(this.value)">
+      </div>
+      <div class="table-wrap">${html}</div>
+      <div class="pagination">
+        <button onclick="cellsPageNav(-1)" ${cellsPage===0?'disabled':''}>← 上一頁</button>
+        <span>第 ${cellsPage+1} / ${pages} 頁（共 ${fmt(total)} 筆）</span>
+        <button onclick="cellsPageNav(1)" ${cellsPage>=pages-1?'disabled':''}>下一頁 →</button>
+      </div>
+    </div>`;
+}
+
+function cellsPageNav(dir) {
+  const el = document.getElementById('panel-cells');
+  cellsPage += dir;
+  renderCellsPage(el);
+}
+function cellSearch(q) {
+  const lower = q.toLowerCase();
+  cellsFiltered = (DATA.cells ?? []).filter(r =>
+    Object.values(r).some(v => String(v).toLowerCase().includes(lower))
+  );
+  cellsPage = 0;
+  const el = document.getElementById('panel-cells');
+  renderCellsPage(el);
+  // restore search input
+  const inp = document.getElementById('cell-search');
+  if (inp) { inp.value = q; inp.focus(); }
+}
+
+// ── Validations ───────────────────────────────────────────────────────────────
+function renderValidations() {
+  const el = document.getElementById('panel-validations');
+  const rows = DATA.validations ?? [];
+  if (!rows.length) { el.innerHTML = emptyState('06_validations.csv 尚未載入'); return; }
+  const html = buildTable('tbl-val',
+    [{key:'qualified_address',label:'Cell'},{key:'range_text',label:'Range'},
+     {key:'validation_type',label:'Type'},{key:'formula1',label:'Formula1'},
+     {key:'enum_values',label:'Options'},{key:'allow_blank',label:'Allow Blank'}],
+    rows,
+    r => `<tr>
+      <td class="mono">${esc(r.qualified_address)}</td>
+      <td class="mono">${esc(r.range_text)}</td>
+      <td>${catPill(r.validation_type)}</td>
+      <td class="mono" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(r.formula1)}</td>
+      <td style="max-width:200px">${r.enum_values ? r.enum_values.split('|').map(v=>`<span style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;margin:1px;display:inline-block;font-size:11px">${esc(v)}</span>`).join('') : ''}</td>
+      <td>${bool2pill(r.allow_blank)}</td>
+    </tr>`);
+  el.innerHTML = `<div class="card"><div class="card-title">✅ Data Validations (${rows.length})</div><div class="table-wrap">${html}</div></div>`;
+}
+
+// ── Formulas ──────────────────────────────────────────────────────────────────
+const FORMULA_PAGE_SIZE = 100;
+let formulasPage = 0, formulasFiltered = [];
+
+function renderFormulas() {
+  const el = document.getElementById('panel-formulas');
+  const data = DATA.formulas?.formulas ?? [];
+  formulasFiltered = data;
+  formulasPage = 0;
+
+  if (!data.length) { el.innerHTML = emptyState('05_formulas.json 尚未載入（Phase 3 產出）'); return; }
+
+  // Category breakdown
+  const cats = {};
+  data.forEach(f => { cats[f.formula_category] = (cats[f.formula_category] ?? 0) + 1; });
+  const catColors = { lookup:'#7eb3ff', branch:'#b07eff', compute:'#4dd9c0',
+    aggregate:'#f0c040', text:'#f08080', reference:'#80c080', mixed:'#f0a040' };
+
+  el.innerHTML = `
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3>📊 公式分類分布</h3>
+        <div class="chart-container"><canvas id="chart-formula-cat"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <h3>📈 複雜度分布</h3>
+        <div class="chart-container"><canvas id="chart-formula-complexity"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📐 Formulas (${fmt(data.length)})</div>
+      <div class="search-bar">
+        <input id="formula-search" placeholder="搜尋 address / 公式文字…" oninput="formulaSearch(this.value)">
+      </div>
+      <div id="formula-table-wrap"></div>
+      <div class="pagination" id="formula-pagination"></div>
+    </div>`;
+
+  // Pie chart
+  destroyChart('formula-cat');
+  CHARTS['formula-cat'] = new Chart(document.getElementById('chart-formula-cat'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(cats),
+      datasets: [{ data: Object.values(cats),
+        backgroundColor: Object.keys(cats).map(k => catColors[k] ?? '#888'),
+        borderWidth: 2, borderColor: '#1a1d27' }]
+    },
+    options: { plugins: { legend: { labels: { color: '#8892a4', font: { size: 12 } } } }, cutout: '60%' }
+  });
+
+  // Histogram (complexity buckets)
+  const buckets = [0,0,0,0,0]; // 0-4, 5-9, 10-19, 20-49, 50+
+  data.forEach(f => {
+    const s = f.complexity_score ?? 0;
+    if (s < 5) buckets[0]++;
+    else if (s < 10) buckets[1]++;
+    else if (s < 20) buckets[2]++;
+    else if (s < 50) buckets[3]++;
+    else buckets[4]++;
+  });
+  destroyChart('formula-complexity');
+  CHARTS['formula-complexity'] = new Chart(document.getElementById('chart-formula-complexity'), {
+    type: 'bar',
+    data: {
+      labels: ['0-4','5-9','10-19','20-49','50+'],
+      datasets: [{ label: 'Formula Count', data: buckets,
+        backgroundColor: ['#34d399','#5b8dee','#fbbf24','#fb923c','#f87171'],
+        borderRadius: 4 }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8892a4' }, grid: { color: '#2e3348' } },
+        y: { ticks: { color: '#8892a4' }, grid: { color: '#2e3348' } }
+      }
+    }
+  });
+
+  renderFormulaTable();
+}
+
+function renderFormulaTable() {
+  const data = formulasFiltered;
+  const start = formulasPage * FORMULA_PAGE_SIZE;
+  const pageRows = data.slice(start, start + FORMULA_PAGE_SIZE);
+  const pages = Math.ceil(data.length / FORMULA_PAGE_SIZE);
+
+  const html = buildTable('tbl-formulas',
+    [{key:'formula_id',label:'#'},{key:'qualified_address',label:'Cell'},
+     {key:'formula_category',label:'Category'},{key:'complexity_score',label:'Score'},
+     {key:'nesting_depth',label:'Depth'},{key:'function_count',label:'Funcs'},
+     {key:'formula_text',label:'Formula'}],
+    pageRows,
+    r => `<tr>
+      <td style="color:var(--text2)">${r.formula_id}</td>
+      <td class="mono">${esc(r.qualified_address)}</td>
+      <td>${catPill(r.formula_category)}</td>
+      <td data-val="${r.complexity_score}"><strong style="color:${(r.complexity_score??0)>=20?'var(--red)':(r.complexity_score??0)>=10?'var(--yellow)':'var(--green)'}">${r.complexity_score}</strong></td>
+      <td data-val="${r.nesting_depth}">${r.nesting_depth}</td>
+      <td data-val="${r.function_count}">${r.function_count}</td>
+      <td class="mono" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.formula_text)}">${esc(r.formula_text)}</td>
+    </tr>`);
+
+  document.getElementById('formula-table-wrap').innerHTML = `<div class="table-wrap">${html}</div>`;
+  document.getElementById('formula-pagination').innerHTML = `
+    <button onclick="formulaPageNav(-1)" ${formulasPage===0?'disabled':''}>← 上一頁</button>
+    <span>第 ${formulasPage+1} / ${Math.max(1,pages)} 頁（共 ${fmt(data.length)} 筆）</span>
+    <button onclick="formulaPageNav(1)" ${formulasPage>=pages-1?'disabled':''}>下一頁 →</button>`;
+}
+function formulaPageNav(dir) { formulasPage += dir; renderFormulaTable(); }
+function formulaSearch(q) {
+  const lower = q.toLowerCase();
+  formulasFiltered = (DATA.formulas?.formulas ?? []).filter(r =>
+    (r.qualified_address ?? '').toLowerCase().includes(lower) ||
+    (r.formula_text ?? '').toLowerCase().includes(lower) ||
+    (r.formula_category ?? '').toLowerCase().includes(lower)
+  );
+  formulasPage = 0;
+  renderFormulaTable();
+  const inp = document.getElementById('formula-search');
+  if (inp) { inp.value = q; inp.focus(); }
+}
+
+// ── VBA ───────────────────────────────────────────────────────────────────────
+function renderVBA() {
+  const el = document.getElementById('panel-vba');
+  const modules = DATA.vbaModules?.modules ?? [];
+  const procs = DATA.vbaProcedures?.procedures ?? [];
+
+  if (!modules.length && !procs.length) {
+    el.innerHTML = emptyState('07/08 VBA 檔案尚未載入（Phase 4 產出）'); return;
+  }
+
+  const modHtml = modules.length ? `
+    <div class="card">
+      <div class="card-title">📦 VBA Modules (${modules.length})</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>#</th><th>Name</th><th>Type</th><th>Lines</th><th>Procedures</th></tr></thead>
+        <tbody>${modules.map(m => `<tr>
+          <td>${m.vba_module_id}</td>
+          <td><strong>${esc(m.module_name)}</strong></td>
+          <td><span style="color:var(--text2)">${esc(m.module_type)}</span></td>
+          <td data-val="${m.line_count}">${fmt(m.line_count)}</td>
+          <td data-val="${m.procedure_count}">${fmt(m.procedure_count)}</td>
+        </tr>`).join('')}</tbody></table>
+      </div>
+    </div>` : '';
+
+  const procHtml = procs.length ? `
+    <div class="card">
+      <div class="card-title">⚙️ Procedures (${procs.length})</div>
+      <div class="table-wrap">
+        ${buildTable('tbl-procs',
+          [{key:'procedure_name',label:'Name'},{key:'procedure_type',label:'Type'},
+           {key:'is_public',label:'Public'},{key:'line_count',label:'Lines'},
+           {key:'complexity_score',label:'Score'},{key:'has_dynamic_range',label:'Dynamic Range'},
+           {key:'has_event_trigger',label:'Event Trigger'}],
+          procs,
+          p => `<tr>
+            <td><strong>${esc(p.procedure_name)}</strong></td>
+            <td style="color:var(--text2)">${esc(p.procedure_type)}</td>
+            <td>${bool2pill(p.is_public)}</td>
+            <td data-val="${p.line_count}">${fmt(p.line_count)}</td>
+            <td data-val="${p.complexity_score}"><strong style="color:${(p.complexity_score??0)>=20?'var(--red)':(p.complexity_score??0)>=10?'var(--yellow)':'var(--green)'}">${p.complexity_score}</strong></td>
+            <td>${bool2pill(p.has_dynamic_range)}</td>
+            <td>${bool2pill((p.triggers?.length ?? 0) > 0)}</td>
+          </tr>`
+        )}
+      </div>
+      ${procs.some(p => p.source_code) ? `
+      <div style="margin-top:16px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Source Code Preview — 選擇 Procedure</div>
+        <select id="vba-select" onchange="showVBASource(this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:13px;margin-bottom:8px">
+          ${procs.map((p,i) => `<option value="${i}">${esc(p.procedure_name)}</option>`).join('')}
+        </select>
+        <div class="code-block" id="vba-code">${esc(procs[0]?.source_code ?? '')}</div>
+      </div>` : ''}
+    </div>` : '';
+
+  el.innerHTML = modHtml + procHtml;
+}
+function showVBASource(idx) {
+  const procs = DATA.vbaProcedures?.procedures ?? [];
+  const el = document.getElementById('vba-code');
+  if (el && procs[idx]) el.textContent = procs[idx].source_code ?? '';
+}
+
+// ── Dependencies ──────────────────────────────────────────────────────────────
+const DEP_PAGE_SIZE = 200;
+let depPage = 0, depFiltered = [];
+
+function renderDependencies() {
+  const el = document.getElementById('panel-dependencies');
+  const rows = DATA.dependencies ?? [];
+  depFiltered = rows;
+  depPage = 0;
+
+  if (!rows.length) { el.innerHTML = emptyState('09_dependencies.csv 尚未載入（Phase 5 產出）'); return; }
+
+  const g = DATA.depGraph;
+  const graphInfo = g ? `
+    <div class="stats-grid" style="margin-bottom:16px">
+      <div class="stat"><div class="value">${fmt(g.graph?.node_count ?? 0)}</div><div class="label">Nodes</div></div>
+      <div class="stat"><div class="value">${fmt(g.graph?.edge_count ?? 0)}</div><div class="label">Edges</div></div>
+      <div class="stat"><div class="value" style="color:${g.graph?.has_cycles?'var(--red)':'var(--green)'}">${g.graph?.cycle_count ?? 0}</div><div class="label">Cycles</div></div>
+      <div class="stat"><div class="value">${fmt(g.graph?.weakly_connected_component_count ?? 0)}</div><div class="label">Components</div></div>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">🕸️ Dependency Graph</div>
+      ${graphInfo}
+      <div class="search-bar">
+        <input id="dep-search" placeholder="搜尋 source / target…" oninput="depSearch(this.value)">
+      </div>
+      <div id="dep-table-wrap"></div>
+      <div class="pagination" id="dep-pagination"></div>
+    </div>`;
+
+  renderDepTable();
+}
+
+function renderDepTable() {
+  const start = depPage * DEP_PAGE_SIZE;
+  const pageRows = depFiltered.slice(start, start + DEP_PAGE_SIZE);
+  const pages = Math.ceil(depFiltered.length / DEP_PAGE_SIZE);
+  const html = buildTable('tbl-deps',
+    [{key:'source_qualified_address',label:'Source'},{key:'target_qualified_address',label:'Target'},
+     {key:'via',label:'Via'},{key:'via_detail',label:'Detail'},{key:'is_cross_sheet',label:'Cross Sheet'}],
+    pageRows,
+    r => `<tr>
+      <td class="mono">${esc(r.source_qualified_address)}</td>
+      <td class="mono">${esc(r.target_qualified_address)}</td>
+      <td>${catPill(r.via)}</td>
+      <td style="color:var(--text2);font-size:12px">${esc(r.via_detail)}</td>
+      <td>${bool2pill(r.is_cross_sheet)}</td>
+    </tr>`);
+  document.getElementById('dep-table-wrap').innerHTML = `<div class="table-wrap">${html}</div>`;
+  document.getElementById('dep-pagination').innerHTML = `
+    <button onclick="depPageNav(-1)" ${depPage===0?'disabled':''}>← 上一頁</button>
+    <span>第 ${depPage+1} / ${Math.max(1,pages)} 頁（共 ${fmt(depFiltered.length)} 筆）</span>
+    <button onclick="depPageNav(1)" ${depPage>=pages-1?'disabled':''}>下一頁 →</button>`;
+}
+function depPageNav(dir) { depPage += dir; renderDepTable(); }
+function depSearch(q) {
+  const lower = q.toLowerCase();
+  depFiltered = (DATA.dependencies ?? []).filter(r =>
+    (r.source_qualified_address ?? '').toLowerCase().includes(lower) ||
+    (r.target_qualified_address ?? '').toLowerCase().includes(lower)
+  );
+  depPage = 0;
+  renderDepTable();
+  const inp = document.getElementById('dep-search');
+  if (inp) { inp.value = q; inp.focus(); }
+}
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+function renderReports() {
+  const el = document.getElementById('panel-reports');
+  const r = DATA.reports ?? {};
+
+  if (!Object.keys(r).length) { el.innerHTML = emptyState('reports/ 資料夾尚未載入（Phase 6 產出）'); return; }
+
+  let html = '';
+
+  // formula_categories
+  if (r.formula_categories?.length) {
+    html += `<div class="chart-row">
+      <div class="chart-box" style="grid-column:1/-1">
+        <h3>📊 公式分類詳細統計</h3>
+        <div class="chart-container" style="height:200px"><canvas id="chart-cats-bar"></canvas></div>
+      </div>
+    </div>`;
+  }
+
+  // top_complex_formulas
+  if (r.top_complex_formulas?.length) {
+    const rows = r.top_complex_formulas;
+    html += `<div class="card"><div class="card-title">🔥 Top ${rows.length} 複雜公式</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Rank</th><th>Cell</th><th>Category</th><th>Score</th><th>Depth</th><th>Functions</th><th>Formula</th></tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td style="color:var(--text2)">${r.rank}</td>
+          <td class="mono">${esc(r.qualified_address)}</td>
+          <td>${catPill(r.formula_category)}</td>
+          <td><strong style="color:${(r.complexity_score??0)>=20?'var(--red)':'var(--yellow)'}">${r.complexity_score}</strong></td>
+          <td>${r.nesting_depth}</td>
+          <td>${r.function_count}</td>
+          <td class="mono" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.formula_text)}">${esc(r.formula_text)}</td>
+        </tr>`).join('')}</tbody></table>
+      </div></div>`;
+  }
+
+  // hotspot_cells
+  if (r.hotspot_cells?.length) {
+    html += `<div class="card"><div class="card-title">🎯 Hotspot Cells (被引用最多)</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Rank</th><th>Cell</th><th>Type</th><th>In-Degree</th><th>By Formula</th><th>By VBA</th></tr></thead>
+        <tbody>${r.hotspot_cells.map(c => `<tr>
+          <td style="color:var(--text2)">${c.rank}</td>
+          <td class="mono"><strong>${esc(c.qualified_address)}</strong></td>
+          <td style="color:var(--text2)">${esc(c.node_type)}</td>
+          <td data-val="${c.in_degree}"><strong style="color:var(--accent)">${fmt(c.in_degree)}</strong></td>
+          <td>${fmt(c.referenced_by_formula_count)}</td>
+          <td>${fmt(c.referenced_by_vba_count)}</td>
+        </tr>`).join('')}</tbody></table>
+      </div></div>`;
+  }
+
+  // vba_behavior
+  if (r.vba_behavior?.length) {
+    html += `<div class="card"><div class="card-title">⚙️ VBA Behavior Report</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Module</th><th>Procedure</th><th>Type</th><th>Lines</th><th>Reads</th><th>Writes</th><th>Score</th><th>Dynamic</th><th>Event</th></tr></thead>
+        <tbody>${r.vba_behavior.map(p => `<tr>
+          <td style="color:var(--text2)">${esc(p.module_name)}</td>
+          <td><strong>${esc(p.procedure_name)}</strong></td>
+          <td style="color:var(--text2)">${esc(p.procedure_type)}</td>
+          <td>${fmt(p.line_count)}</td>
+          <td>${fmt(p.read_count)}</td>
+          <td>${fmt(p.write_count)}</td>
+          <td><strong style="color:${(p.complexity_score??0)>=20?'var(--red)':'var(--text)'}">${p.complexity_score}</strong></td>
+          <td>${bool2pill(p.has_dynamic_range)}</td>
+          <td>${bool2pill(p.has_event_trigger)}</td>
+        </tr>`).join('')}</tbody></table>
+      </div></div>`;
+  }
+
+  // orphans
+  if (r.orphans?.length) {
+    html += `<div class="card"><div class="card-title">🏝️ 孤島公式 (${r.orphans.length})</div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Cell</th><th>Category</th><th>Score</th><th>Reason</th></tr></thead>
+        <tbody>${r.orphans.map(o => `<tr>
+          <td class="mono">${esc(o.qualified_address)}</td>
+          <td>${catPill(o.formula_category)}</td>
+          <td>${o.complexity_score}</td>
+          <td style="color:var(--text2)">${esc(o.reason)}</td>
+        </tr>`).join('')}</tbody></table>
+      </div></div>`;
+  }
+
+  // cycles
+  if (r.cycles?.cycles?.length) {
+    html += `<div class="card"><div class="card-title" style="color:var(--red)">🔄 循環引用 (${r.cycles.cycles.length})</div>
+      ${r.cycles.cycles.map(c => `
+        <div style="background:var(--surface2);border:1px solid #7c1c1c;border-radius:6px;padding:12px;margin-bottom:8px">
+          <strong style="color:var(--red)">Cycle #${c.cycle_id}</strong>
+          <span style="color:var(--text2);margin-left:8px">長度: ${c.length}</span>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--text2)">
+            ${(c.nodes ?? []).join(' → ')}
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  if (!html) { el.innerHTML = emptyState('reports/ 資料夾內無可解析的報告'); return; }
+  el.innerHTML = html;
+
+  // Render categories bar chart after DOM is ready
+  if (r.formula_categories?.length) {
+    const cats = r.formula_categories;
+    destroyChart('cats-bar');
+    CHARTS['cats-bar'] = new Chart(document.getElementById('chart-cats-bar'), {
+      type: 'bar',
+      data: {
+        labels: cats.map(c => c.category),
+        datasets: [
+          { label: '公式數', data: cats.map(c => Number(c.formula_count)), backgroundColor: '#5b8dee', borderRadius: 4 },
+          { label: '平均複雜度', data: cats.map(c => parseFloat(c.avg_complexity).toFixed(1)), backgroundColor: '#fb923c', borderRadius: 4 }
+        ]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#8892a4', font: { size: 12 } } } },
+        scales: {
+          x: { ticks: { color: '#8892a4' }, grid: { color: '#2e3348' } },
+          y: { ticks: { color: '#8892a4' }, grid: { color: '#2e3348' } }
+        }
+      }
+    });
+  }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function emptyState(msg) {
+  return `<div class="empty"><div class="icon">📭</div><p>${esc(msg)}</p></div>`;
+}
+function destroyChart(key) {
+  if (CHARTS[key]) { CHARTS[key].destroy(); delete CHARTS[key]; }
+}
+function resetViewer() {
+  Object.keys(DATA).forEach(k => delete DATA[k]);
+  Object.keys(CHARTS).forEach(k => { CHARTS[k]?.destroy(); delete CHARTS[k]; });
+  document.getElementById('viewer').classList.remove('visible');
+  document.getElementById('upload-screen').style.display = '';
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(`panel-${tab.dataset.tab}`).classList.add('active');
+  });
+});
+
+// ── File input handlers ───────────────────────────────────────────────────────
+document.getElementById('folder-input').addEventListener('change', e => {
+  if (e.target.files.length) loadFiles(Array.from(e.target.files));
+});
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const files = [];
+  const processEntry = async (entry) => {
+    if (entry.isFile) {
+      const file = await new Promise(res => entry.file(res));
+      files.push(file);
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const entries = await new Promise(res => reader.readEntries(res));
+      for (const e of entries) await processEntry(e);
+    }
+  };
+  const items = Array.from(e.dataTransfer.items);
+  Promise.all(items.map(item => processEntry(item.webkitGetAsEntry()))).then(() => {
+    if (files.length) loadFiles(files);
+  });
+});
+</script>
+</body>
+</html>
