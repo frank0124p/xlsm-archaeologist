@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "procedures": [
+    {
+      "vba_procedure_id": 1,
+      "vba_module_id": 1,
+      "procedure_name": "UpdateFormDetails",
+      "procedure_type": "sub",
+      "is_public": true,
+      "parameters": [
+        {"name": "rowIndex", "type_hint": "Long", "is_optional": false}
+      ],
+      "line_count": 47,
+      "reads": [
+        {"sheet": "Input", "range": "A2:A100", "via": "explicit_range"},
+        {"sheet": "Params", "range": "TaxRate", "via": "named_range"}
+      ],
+      "writes": [
+        {"sheet": "Output", "range": "B2:Z100", "via": "explicit_range"}
+      ],
+      "calls": ["CalculateRow", "FormatOutput"],
+      "triggers": [],
+      "has_dynamic_range": true,
+      "dynamic_range_notes": [
+        "Line 23: `Range(\"A\" & lastRow)` — runtime computed cell address"
+      ],
+      "complexity_score": 23,
+      "source_code": "Public Sub UpdateFormDetails(ByVal rowIndex As Long)\n    ' ... 47 lines\nEnd Sub"
+    },
+    {
+      "vba_procedure_id": 2,
+      "vba_module_id": 2,
+      "procedure_name": "Worksheet_Change",
+      "procedure_type": "sub",
+      "is_public": false,
+      "parameters": [
+        {"name": "Target", "type_hint": "Range", "is_optional": false}
+      ],
+      "line_count": 12,
+      "reads": [
+        {"sheet": "Input", "range": "A:A", "via": "explicit_range"}
+      ],
+      "writes": [],
+      "calls": ["UpdateFormDetails"],
+      "triggers": [
+        {"event": "Worksheet_Change", "target": "Input!A:A"}
+      ],
+      "has_dynamic_range": false,
+      "dynamic_range_notes": [],
+      "complexity_score": 8,
+      "source_code": "Private Sub Worksheet_Change(ByVal Target As Range)\n    If Intersect(Target, Range(\"A:A\")) Is Nothing Then Exit Sub\n    Call UpdateFormDetails(Target.Row)\nEnd Sub"
+    }
+  ]
+}

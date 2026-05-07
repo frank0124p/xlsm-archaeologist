@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "tool_version": "0.1.0",
+  "analyzed_at": "2026-05-07T14:23:11+08:00",
+  "input_file": {
+    "path": "tests/fixtures/formulas_complex.xlsm",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size_bytes": 18432
+  },
+  "stats": {
+    "sheet_count": 3,
+    "named_range_count": 2,
+    "formula_count": 12,
+    "validation_count": 0,
+    "vba_module_count": 0,
+    "vba_procedure_count": 0,
+    "dependency_edge_count": 18
+  },
+  "risk_indicators": {
+    "circular_reference_count": 0,
+    "external_reference_count": 0,
+    "volatile_function_count": 1,
+    "dynamic_vba_range_count": 0,
+    "deeply_nested_formula_count": 1,
+    "orphan_formula_count": 0,
+    "cross_sheet_dependency_count": 4
+  },
+  "complexity_score": 22,
+  "migration_difficulty": "low",
+  "warnings": []
+}

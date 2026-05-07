@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "formulas": [
+    {
+      "formula_id": 1,
+      "qualified_address": "Calc!B2",
+      "formula_text": "=A2*TaxRate",
+      "formula_category": "compute",
+      "function_list": [],
+      "referenced_cells": [
+        {"sheet": "Calc", "address": "A2"}
+      ],
+      "referenced_named_ranges": ["TaxRate"],
+      "has_external_reference": false,
+      "is_volatile": false,
+      "is_array_formula": false,
+      "is_parsable": true,
+      "parse_error": null,
+      "nesting_depth": 0,
+      "function_count": 0,
+      "complexity_score": 1,
+      "ast": {
+        "type": "operator",
+        "op": "*",
+        "left": {"type": "range", "sheet": null, "address": "A2"},
+        "right": {"type": "named_range", "name": "TaxRate"}
+      }
+    },
+    {
+      "formula_id": 2,
+      "qualified_address": "Calc!C2",
+      "formula_text": "=IF(VLOOKUP(A2,Params!A:B,2,0)>100,\"高\",\"低\")",
+      "formula_category": "mixed",
+      "function_list": ["IF", "VLOOKUP"],
+      "referenced_cells": [
+        {"sheet": "Calc", "address": "A2"},
+        {"sheet": "Params", "address": "A:B"}
+      ],
+      "referenced_named_ranges": [],
+      "has_external_reference": false,
+      "is_volatile": false,
+      "is_array_formula": false,
+      "is_parsable": true,
+      "parse_error": null,
+      "nesting_depth": 2,
+      "function_count": 2,
+      "complexity_score": 6,
+      "ast": {
+        "type": "function",
+        "name": "IF",
+        "args": [
+          {
+            "type": "operator",
+            "op": ">",
+            "left": {
+              "type": "function",
+              "name": "VLOOKUP",
+              "args": [
+                {"type": "range", "sheet": null, "address": "A2"},
+                {"type": "range", "sheet": "Params", "address": "A:B"},
+                {"type": "operand", "operand_type": "number", "value": "2"},
+                {"type": "operand", "operand_type": "number", "value": "0"}
+              ]
+            },
+            "right": {"type": "operand", "operand_type": "number", "value": "100"}
+          },
+          {"type": "operand", "operand_type": "text", "value": "高"},
+          {"type": "operand", "operand_type": "text", "value": "低"}
+        ]
+      }
+    }
+  ]
+}
