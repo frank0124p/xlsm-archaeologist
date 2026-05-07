@@ -21,7 +21,7 @@ class WorkbookRecord(BaseModel):
     default_sheet: str | None = Field(
         default=None, description="Name of the active sheet at save time"
     )
-    created: str | None = Field(default=None, description="ISO-8601 creation timestamp if available")
+    created: str | None = Field(default=None, description="ISO-8601 creation timestamp")
     modified: str | None = Field(
         default=None, description="ISO-8601 last-modified timestamp if available"
     )

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import csv
 import io
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 
 def _to_csv_value(v: Any) -> str:

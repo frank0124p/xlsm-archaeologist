@@ -19,7 +19,7 @@ class NamedRangeRecord(BaseModel):
         description="'workbook' for workbook-scoped names, or the sheet name for local names"
     )
     refers_to: str = Field(
-        description="Full refers_to string including leading '=' and absolute refs, e.g. '=Params!$B$2'"
+        description="Full refers_to string with leading '=' and absolute refs, e.g. '=Params!$B$2'"
     )
     has_dynamic_formula: bool = Field(
         description="True when refers_to contains OFFSET, INDIRECT, or INDEX (volatile/dynamic)"

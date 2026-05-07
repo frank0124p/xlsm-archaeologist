@@ -22,10 +22,10 @@ def test_version_command_works() -> None:
 
 
 def test_analyze_command_callable() -> None:
-    """analyze command exits 0 and prints stub message."""
-    result = runner.invoke(app, ["analyze", "dummy.xlsm"])
-    assert result.exit_code == 0
-    assert "not implemented in phase 1" in result.output
+    """analyze command is callable; returns exit 1 for a missing file (Phase 2+)."""
+    result = runner.invoke(app, ["analyze", "nonexistent_file.xlsm"])
+    # Phase 2 implemented: missing file → exit 1 with error message
+    assert result.exit_code == 1
 
 
 def test_inspect_command_callable() -> None:

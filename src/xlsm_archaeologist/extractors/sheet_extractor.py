@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 from openpyxl.workbook.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
@@ -28,6 +28,8 @@ def _parse_dimension(dim: str | None) -> tuple[int, int]:
         from openpyxl.utils.cell import range_boundaries
 
         min_col, min_row, max_col, max_row = range_boundaries(dim)
+        if min_row is None or max_row is None or min_col is None or max_col is None:
+            return 0, 0
         return max_row - min_row + 1, max_col - min_col + 1
     except Exception:
         return 0, 0

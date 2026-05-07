@@ -25,16 +25,14 @@ class CellRecord(BaseModel):
     cell_id: int = Field(description="1-based sequential ID across all sheets")
     sheet_name: str = Field(description="Name of the containing sheet")
     cell_address: str = Field(description="A1-notation without sheet prefix, e.g. 'B7'")
-    qualified_address: str = Field(
-        description="Sheet-qualified unique address, e.g. 'Calc!B7'"
-    )
+    qualified_address: str = Field(description="Sheet-qualified unique address, e.g. 'Calc!B7'")
     cell_row: int = Field(description="1-based row number")
     cell_col: int = Field(description="1-based column number (A=1)")
     has_formula: bool = Field(description="True when the cell contains a formula")
     has_validation: bool = Field(description="True when the cell is covered by a data validation")
     is_named: bool = Field(description="True when the cell is the target of a named range")
     is_referenced: bool = Field(
-        description="True when referenced by another cell or VBA — filled in Phase 5, always False here"
+        description="True when referenced by another cell or VBA — filled in Phase 5"
     )
     value_type: ValueType = Field(description="Type of the stored value")
     raw_value: str = Field(
@@ -54,9 +52,7 @@ class ValidationRecord(BaseModel):
     qualified_address: str = Field(
         description="Sheet-qualified address of the first cell in the validation range"
     )
-    range_text: str = Field(
-        description="Full sqref string as stored by openpyxl, e.g. 'A2:A100'"
-    )
+    range_text: str = Field(description="Full sqref string as stored by openpyxl, e.g. 'A2:A100'")
     validation_type: ValidationType = Field(
         description="Validation rule type from the openpyxl DataValidation.type"
     )
@@ -71,8 +67,7 @@ class ValidationRecord(BaseModel):
     enum_values: str = Field(
         default="",
         description=(
-            "Pipe-separated parsed options for 'list' type validations. "
-            "Empty for non-list types."
+            "Pipe-separated parsed options for 'list' type validations. Empty for non-list types."
         ),
     )
     allow_blank: bool = Field(description="True when blank cells pass validation")

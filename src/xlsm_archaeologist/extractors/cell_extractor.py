@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 from openpyxl.workbook.workbook import Workbook
 
@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 def _value_type(cell: object) -> ValueType:
     """Map an openpyxl cell to our ValueType enum."""
-    from openpyxl.cell.cell import Cell, TYPE_BOOL, TYPE_ERROR, TYPE_NUMERIC, TYPE_STRING
+    from openpyxl.cell.cell import TYPE_BOOL, TYPE_ERROR, TYPE_NUMERIC, TYPE_STRING, Cell
 
     if not isinstance(cell, Cell):
         return "empty"
@@ -82,14 +82,16 @@ def extract_cells(
                 if not (has_formula or has_validation or is_named):
                     continue
 
+                cell_row: int = cell.row or 0
+                cell_col: int = cell.column or 0
                 seen_id += 1
                 yield CellRecord(
                     cell_id=seen_id,
                     sheet_name=sheet_name,
                     cell_address=cell.coordinate,
                     qualified_address=qa,
-                    cell_row=cell.row,
-                    cell_col=cell.column,
+                    cell_row=cell_row,
+                    cell_col=cell_col,
                     has_formula=has_formula,
                     has_validation=has_validation,
                     is_named=is_named,

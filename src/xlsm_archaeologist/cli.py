@@ -52,14 +52,31 @@ def analyze(
     no_graph: Annotated[bool, typer.Option("--no-graph", help="Skip dependency graph")] = False,
     no_reports: Annotated[
         bool, typer.Option("--no-reports", help="Skip report generation")
-    ] = False,  # noqa: E501
+    ] = False,
     max_formula_depth: Annotated[int, typer.Option(help="Max formula AST nesting depth")] = 20,
     log_level: Annotated[str, typer.Option(help="Log level: debug/info/warning/error")] = "info",
     quiet: Annotated[bool, typer.Option("--quiet", "-q", help="Suppress progress bar")] = False,
     force: Annotated[bool, typer.Option("--force", help="Overwrite non-empty output dir")] = False,
 ) -> None:
     """Perform full archaeological analysis of an .xlsm file."""
-    typer.echo("not implemented in phase 1")
+    from xlsm_archaeologist.runner import run_extraction
+
+    if not input_path.exists():
+        typer.echo(f"Error: file not found: {input_path}", err=True)
+        raise typer.Exit(code=1)
+
+    if output.exists() and any(output.iterdir()) and not force:
+        typer.echo(
+            f"Error: output directory {output} is not empty. Use --force to overwrite.", err=True
+        )
+        raise typer.Exit(code=3)
+
+    run_extraction(
+        input_path=input_path,
+        output_dir=output,
+        quiet=quiet,
+        log_level=log_level,
+    )
 
 
 @app.command()

@@ -40,7 +40,8 @@ def _iso_timestamp(dt: object) -> str | None:
     if dt is None:
         return None
     if hasattr(dt, "isoformat"):
-        return dt.isoformat()  # type: ignore[union-attr]
+        result = dt.isoformat()
+        return str(result)
     return str(dt)
 
 
@@ -69,7 +70,9 @@ def extract_workbook(path: Path) -> tuple[WorkbookRecord, Workbook]:
         keep_vba=True,
     )
 
-    has_vba = wb.vba_archive is not None
+    # vba_archive is non-None for any file opened with keep_vba=True.
+    # Real VBA presence requires xl/vbaProject.bin inside the archive.
+    has_vba = wb.vba_archive is not None and "xl/vbaProject.bin" in wb.vba_archive.namelist()
     has_ext = _detect_external_links(wb)
 
     props = wb.properties

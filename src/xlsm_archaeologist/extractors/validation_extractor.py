@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 from openpyxl.workbook.workbook import Workbook
 
@@ -44,8 +44,6 @@ def _parse_enum_values(formula1: str, sheet_name: str, wb: Workbook) -> str:
     # Range reference: e.g. '=Params!$A$2:$A$10' or 'Sheet1!A1:A5'
     ref = stripped.lstrip("=")
     try:
-        from openpyxl.utils.cell import range_boundaries
-
         if "!" in ref:
             sheet_part, range_part = ref.split("!", 1)
             target_sheet_name = sheet_part.strip("'$")
@@ -113,6 +111,6 @@ def extract_validations(wb: Workbook) -> Iterator[ValidationRecord]:
                 formula2=f2,
                 enum_values=enum_values,
                 allow_blank=bool(dv.allow_blank),
-                error_title=str(dv.error_title) if dv.error_title else "",
+                error_title=str(dv.errorTitle) if dv.errorTitle else "",
                 error_message=str(dv.error) if dv.error else "",
             )

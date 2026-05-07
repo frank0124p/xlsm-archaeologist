@@ -23,6 +23,7 @@ dev = [
     "pytest-cov >= 5.0, < 6.0",
     "ruff >= 0.6, < 1.0",
     "mypy >= 1.8, < 2.0",
+    "types-openpyxl >= 3.1, < 4.0",
 ]
 
 [build-system]
@@ -48,3 +49,7 @@ addopts = "-v"
 strict = true
 python_version = "3.12"
 files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["oletools.*", "networkx.*"]
+ignore_missing_imports = true
