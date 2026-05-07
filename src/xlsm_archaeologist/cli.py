@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import sys
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as pkg_version
 from pathlib import Path
 from typing import Annotated
 
 import typer
-from importlib.metadata import version as pkg_version, PackageNotFoundError
 
 from xlsm_archaeologist import __version__
 
@@ -49,7 +50,9 @@ def analyze(
     phases: Annotated[str, typer.Option(help="Phases to run, comma-separated or 'all'")] = "all",
     no_vba: Annotated[bool, typer.Option("--no-vba", help="Skip VBA analysis")] = False,
     no_graph: Annotated[bool, typer.Option("--no-graph", help="Skip dependency graph")] = False,
-    no_reports: Annotated[bool, typer.Option("--no-reports", help="Skip report generation")] = False,
+    no_reports: Annotated[
+        bool, typer.Option("--no-reports", help="Skip report generation")
+    ] = False,  # noqa: E501
     max_formula_depth: Annotated[int, typer.Option(help="Max formula AST nesting depth")] = 20,
     log_level: Annotated[str, typer.Option(help="Log level: debug/info/warning/error")] = "info",
     quiet: Annotated[bool, typer.Option("--quiet", "-q", help="Suppress progress bar")] = False,
