@@ -1,9 +1,10 @@
-"""Orchestrate Phase 2 extraction: open workbook → extract → serialize."""
+"""Orchestrate extraction + analysis: open workbook → extract → analyze → serialize."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from xlsm_archaeologist.analyzers.formula_analyzer import analyze_formulas
 from xlsm_archaeologist.extractors.cell_extractor import extract_cells
 from xlsm_archaeologist.extractors.named_range_extractor import extract_named_ranges
 from xlsm_archaeologist.extractors.sheet_extractor import extract_sheets
@@ -66,6 +67,17 @@ _VALIDATIONS_COLUMNS = [
     "error_title",
     "error_message",
 ]
+
+
+def _formula_dict(f: object) -> dict[str, object]:
+    """Serialize a FormulaRecord to a plain dict, converting CellRef list to dicts."""
+    from xlsm_archaeologist.models.formula import FormulaRecord
+
+    if not isinstance(f, FormulaRecord):
+        return {}
+    d: dict[str, object] = f.model_dump()
+    d["referenced_cells"] = [{"sheet": r.sheet, "address": r.address} for r in f.referenced_cells]
+    return d
 
 
 def _build_named_addresses(wb: object) -> set[str]:
@@ -142,7 +154,7 @@ def run_extraction(
     quiet: bool = False,
     log_level: str = "info",
 ) -> None:
-    """Run Phase 2 extraction and write 01-04, 06 output files.
+    """Run extraction + formula analysis and write output files 01-07.
 
     Args:
         input_path: Path to the source .xlsm file.
@@ -153,7 +165,7 @@ def run_extraction(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with ProgressBar(quiet=quiet) as bar:
-        task = bar.add_task("Phase 2: Extraction", total=6)
+        task = bar.add_task("Extraction + Analysis", total=7)
 
         # --- Step 1: Workbook metadata ---
         workbook_record, wb = extract_workbook(input_path)
@@ -182,6 +194,15 @@ def run_extraction(
         cells = [c.model_copy(update={"cell_id": i + 1}) for i, c in enumerate(cells)]
         bar.advance(task)
 
+        # --- Step 5b: Formula analysis ---
+        formula_warnings: list[str] = []
+        formulas = sorted(
+            analyze_formulas(cells, formula_warnings),
+            key=lambda f: f.qualified_address,
+        )
+        formulas = [f.model_copy(update={"formula_id": i + 1}) for i, f in enumerate(formulas)]
+        bar.advance(task)
+
         # --- Step 6: Write files ---
         write_json(
             output_dir / "01_workbook.json",
@@ -206,6 +227,14 @@ def run_extraction(
             _CELLS_COLUMNS,
         )
 
+        write_json(
+            output_dir / "05_formulas.json",
+            {
+                "formulas": [_formula_dict(f) for f in formulas],
+                "warnings": formula_warnings,
+            },
+        )
+
         write_csv(
             output_dir / "06_validations.csv",
             [v.model_dump() for v in validations],
@@ -216,10 +245,11 @@ def run_extraction(
 
     wb.close()
     logger.info(
-        "Extraction complete → %s  (%d sheets, %d named ranges, %d cells, %d validations)",
+        "Complete → %s  (%d sheets, %d named ranges, %d cells, %d formulas, %d validations)",
         output_dir,
         len(sheets),
         len(named_ranges),
         len(cells),
+        len(formulas),
         len(validations),
     )
