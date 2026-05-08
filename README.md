@@ -9,13 +9,37 @@
 
 ## 安裝
 
-### 方法一：pip（推薦）
+### 前置需求
+
+- **Python 3.12**（必須，不支援 3.11 或 3.9）
+
+確認 Python 版本：
+
+```bash
+python3 --version
+# 應顯示 Python 3.12.x
+```
+
+若系統 Python 版本不符，可用 [pyenv](https://github.com/pyenv/pyenv) 或 [uv](https://docs.astral.sh/uv/) 安裝 3.12：
+
+```bash
+# 用 uv 安裝 Python 3.12
+uv python install 3.12
+```
+
+---
+
+### 方法一：pip 直接從 GitHub 安裝（推薦）
 
 ```bash
 pip install git+https://github.com/frank0124p/xlsm-archaeologist.git
 ```
 
-> 需要 Python 3.12+。
+如果系統有多個 Python 版本，請明確指定 3.12：
+
+```bash
+python3.12 -m pip install git+https://github.com/frank0124p/xlsm-archaeologist.git
+```
 
 確認安裝成功：
 
@@ -23,7 +47,7 @@ pip install git+https://github.com/frank0124p/xlsm-archaeologist.git
 xlsm-archaeologist version
 ```
 
-輸出範例：
+預期輸出：
 ```
 xlsm-archaeologist 0.1.0
 schema_version: 1.0
@@ -32,25 +56,30 @@ openpyxl: 3.1.x
 oletools: 0.60.x
 ```
 
-### 方法二：從 Release 下載 wheel
+---
 
-至 [Releases 頁面](https://github.com/frank0124p/xlsm-archaeologist/releases) 下載最新的 `.whl` 檔案，再手動安裝：
+### 方法二：下載 wheel 手動安裝
+
+至 [Releases 頁面](https://github.com/frank0124p/xlsm-archaeologist/releases/latest) 下載 `xlsm_archaeologist-*.whl`，再安裝：
 
 ```bash
 pip install xlsm_archaeologist-0.1.0-py3-none-any.whl
 ```
 
-### 方法三：從原始碼（開發用）
+---
+
+### 方法三：原始碼安裝（開發 / 修改用）
 
 ```bash
 git clone https://github.com/frank0124p/xlsm-archaeologist.git
 cd xlsm-archaeologist
 
-# 使用 pip
+# 一般安裝（可編輯模式）
 pip install -e .
 
-# 或使用 uv（開發環境，含測試工具）
+# 開發環境（含測試、lint 工具）— 需要先安裝 uv
 uv sync --group dev
+uv run xlsm-archaeologist version   # 開發環境用 uv run 執行
 ```
 
 ---
