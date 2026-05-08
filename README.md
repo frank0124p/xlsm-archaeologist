@@ -13,19 +13,14 @@
 
 - **Python 3.12 / 3.13 / 3.14**（不支援 3.11 以下）
 
-確認 Python 版本：
+確認版本：
 
 ```bash
 python3 --version
 # 應顯示 Python 3.12.x 以上
 ```
 
-若系統版本不符，可用 [pyenv](https://github.com/pyenv/pyenv) 或 [uv](https://docs.astral.sh/uv/) 安裝：
-
-```bash
-# 用 uv 安裝 Python 3.12
-uv python install 3.12
-```
+若版本不符，至 https://www.python.org/downloads/ 下載安裝。
 
 ---
 
@@ -35,7 +30,7 @@ uv python install 3.12
 pip install git+https://github.com/frank0124p/xlsm-archaeologist.git
 ```
 
-如果系統有多個 Python 版本，請明確指定 3.12：
+若系統有多個 Python 版本，請明確指定：
 
 ```bash
 python3.12 -m pip install git+https://github.com/frank0124p/xlsm-archaeologist.git
@@ -60,7 +55,7 @@ oletools: 0.60.x
 
 ### 方法二：下載 wheel 手動安裝
 
-至 [Releases 頁面](https://github.com/frank0124p/xlsm-archaeologist/releases/latest) 下載 `xlsm_archaeologist-*.whl`，再安裝：
+至 [Releases 頁面](https://github.com/frank0124p/xlsm-archaeologist/releases/latest) 下載 `xlsm_archaeologist-*.whl`：
 
 ```bash
 pip install xlsm_archaeologist-0.1.0-py3-none-any.whl
@@ -73,18 +68,14 @@ pip install xlsm_archaeologist-0.1.0-py3-none-any.whl
 ```bash
 git clone https://github.com/frank0124p/xlsm-archaeologist.git
 cd xlsm-archaeologist
-
-# 一般安裝（可編輯模式）
-pip install -e .
-
-# 開發環境（含測試、lint 工具）— 需要先安裝 uv
-uv sync --group dev
-uv run xlsm-archaeologist version   # 開發環境用 uv run 執行
+pip install -e ".[dev]"
 ```
 
 ---
 
 ## 快速開始
+
+安裝完成後，直接用 `xlsm-archaeologist` 指令：
 
 ```bash
 # 分析一個 .xlsm 檔案（輸出到 ./archaeology_output/）
@@ -96,8 +87,6 @@ xlsm-archaeologist analyze MyFile.xlsm --output ./my_output
 # 快速預覽基本資訊（不寫檔）
 xlsm-archaeologist inspect MyFile.xlsm
 ```
-
-> 如果是以 `uv sync` 安裝的開發環境，指令前需加 `uv run`，例如：`uv run xlsm-archaeologist analyze MyFile.xlsm`
 
 ---
 
@@ -125,16 +114,16 @@ xlsm-archaeologist analyze [OPTIONS] INPUT_PATH
 
 ```bash
 # 完整分析
-uv run xlsm-archaeologist analyze Invoice.xlsm -o ./out
+xlsm-archaeologist analyze Invoice.xlsm -o ./out
 
 # 只分析結構（最快，跳過 VBA 與依賴圖）
-uv run xlsm-archaeologist analyze Invoice.xlsm --no-vba --no-graph --no-reports
+xlsm-archaeologist analyze Invoice.xlsm --no-vba --no-graph --no-reports
 
 # 強制覆蓋已有輸出目錄
-uv run xlsm-archaeologist analyze Invoice.xlsm --force
+xlsm-archaeologist analyze Invoice.xlsm --force
 
 # 詳細 debug 模式
-uv run xlsm-archaeologist analyze Invoice.xlsm --log-level debug
+xlsm-archaeologist analyze Invoice.xlsm --log-level debug
 ```
 
 ### `inspect` — 快速預覽
@@ -142,13 +131,13 @@ uv run xlsm-archaeologist analyze Invoice.xlsm --log-level debug
 顯示 workbook 基本資訊，**不寫入任何檔案**：
 
 ```bash
-uv run xlsm-archaeologist inspect MyFile.xlsm
+xlsm-archaeologist inspect MyFile.xlsm
 ```
 
 ### `version` — 版本資訊
 
 ```bash
-uv run xlsm-archaeologist version
+xlsm-archaeologist version
 ```
 
 ---
@@ -298,48 +287,10 @@ src/xlsm_archaeologist/
 ├── config.py                  # pydantic-settings 全域設定
 ├── errors.py                  # 自訂例外
 ├── models/                    # Pydantic v2 資料模型
-│   ├── workbook.py
-│   ├── cell.py
-│   ├── named_range.py
-│   ├── formula.py
-│   ├── vba.py
-│   ├── dependency.py
-│   └── summary.py
 ├── extractors/                # Layer 1：從 openpyxl 原始抽取
-│   ├── workbook_extractor.py
-│   ├── sheet_extractor.py
-│   ├── cell_extractor.py
-│   ├── named_range_extractor.py
-│   ├── validation_extractor.py
-│   └── vba_extractor.py
 ├── analyzers/                 # Layer 2：語意分析
-│   ├── formula_tokenizer.py
-│   ├── formula_parser.py
-│   ├── formula_classifier.py
-│   ├── formula_complexity.py
-│   ├── formula_analyzer.py
-│   ├── vba_procedure_splitter.py
-│   ├── vba_range_detector.py
-│   ├── vba_call_graph.py
-│   ├── vba_analyzer.py
-│   ├── dependency_graph_builder.py
-│   ├── cycle_detector.py
-│   ├── orphan_detector.py
-│   ├── dependency_analyzer.py
-│   └── summary_analyzer.py
 ├── reports/                   # 報告產生器
-│   ├── summary_builder.py
-│   ├── formula_categories_report.py
-│   ├── top_complex_formulas_report.py
-│   ├── hotspot_cells_report.py
-│   ├── vba_behavior_report.py
-│   └── cross_sheet_refs_report.py
-├── serializers/
-│   ├── json_writer.py         # JSON（schema_version 自動注入，sort_keys）
-│   └── csv_writer.py          # UTF-8-with-BOM CSV（Excel 直開不亂碼）
-└── utils/
-    ├── logging.py
-    └── progress.py
+└── serializers/               # JSON / CSV 輸出
 ```
 
 ---
@@ -369,18 +320,19 @@ src/xlsm_archaeologist/
 ## 開發
 
 ```bash
-# 安裝含開發工具
 git clone https://github.com/frank0124p/xlsm-archaeologist.git
 cd xlsm-archaeologist
-uv sync --group dev
+
+# 安裝含開發工具
+pip install -e ".[dev]"
 
 # 執行測試
-uv run pytest
-uv run pytest --cov               # 含覆蓋率報告
+pytest
+pytest --cov                  # 含覆蓋率報告
 
 # Lint & 型別檢查
-uv run ruff check src/
-uv run mypy src/
+ruff check src/
+mypy src/
 ```
 
 ---

@@ -36,6 +36,15 @@ Homepage = "https://github.com/frank0124p/xlsm-archaeologist"
 Repository = "https://github.com/frank0124p/xlsm-archaeologist"
 Issues = "https://github.com/frank0124p/xlsm-archaeologist/issues"
 
+[project.optional-dependencies]
+dev = [
+    "pytest >= 8.0, < 9.0",
+    "pytest-cov >= 5.0, < 6.0",
+    "ruff >= 0.6, < 1.0",
+    "mypy >= 1.8, < 2.0",
+    "types-openpyxl >= 3.1, < 4.0",
+]
+
 [dependency-groups]
 dev = [
     "pytest >= 8.0, < 9.0",
