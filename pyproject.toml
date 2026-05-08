@@ -1,6 +1,6 @@
 [project]
 name = "xlsm-archaeologist"
-version = "0.1.0"
+version = "0.1.1"
 description = "Archaeologize complex .xlsm files into structured JSON/CSV data"
 readme = "README.md"
 license = { text = "MIT" }

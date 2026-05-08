@@ -58,7 +58,7 @@ oletools: 0.60.x
 至 [Releases 頁面](https://github.com/frank0124p/xlsm-archaeologist/releases/latest) 下載 `xlsm_archaeologist-*.whl`：
 
 ```bash
-pip install xlsm_archaeologist-0.1.0-py3-none-any.whl
+pip install xlsm_archaeologist-0.1.1-py3-none-any.whl
 ```
 
 ---
