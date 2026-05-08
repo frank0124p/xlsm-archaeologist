@@ -2,7 +2,7 @@
 
 把複雜的 `.xlsm`（帶 VBA 巨集的 Excel）完整考古成結構化的 JSON/CSV，包含工作表、公式 AST、VBA 模組/程序、儲存格依賴圖與移植難度評分。輸出可直接餵給後續規則引擎設計、LLM 分析，或搭配 [Form Assembly Service](https://github.com/frank0124p/form-assembly) 自動生成互動式表單。
 
-[![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org)
+[![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -11,16 +11,16 @@
 
 ### 前置需求
 
-- **Python 3.12**（必須，不支援 3.11 或 3.9）
+- **Python 3.12 / 3.13 / 3.14**（不支援 3.11 以下）
 
 確認 Python 版本：
 
 ```bash
 python3 --version
-# 應顯示 Python 3.12.x
+# 應顯示 Python 3.12.x 以上
 ```
 
-若系統 Python 版本不符，可用 [pyenv](https://github.com/pyenv/pyenv) 或 [uv](https://docs.astral.sh/uv/) 安裝 3.12：
+若系統版本不符，可用 [pyenv](https://github.com/pyenv/pyenv) 或 [uv](https://docs.astral.sh/uv/) 安裝：
 
 ```bash
 # 用 uv 安裝 Python 3.12
