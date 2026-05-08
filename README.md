@@ -7,31 +7,20 @@
 
 ---
 
-## 前置需求
-
-- Python **3.12**（不支援其他版本）
-- [uv](https://docs.astral.sh/uv/getting-started/installation/) 套件管理器
-
-安裝 uv：
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
----
-
 ## 安裝
 
+### 方法一：pip（推薦）
+
 ```bash
-git clone https://github.com/frank0124p/xlsm-archaeologist.git
-cd xlsm-archaeologist
-uv sync
+pip install git+https://github.com/frank0124p/xlsm-archaeologist.git
 ```
+
+> 需要 Python 3.12+。
 
 確認安裝成功：
 
 ```bash
-uv run xlsm-archaeologist version
+xlsm-archaeologist version
 ```
 
 輸出範例：
@@ -43,20 +32,43 @@ openpyxl: 3.1.x
 oletools: 0.60.x
 ```
 
+### 方法二：從 Release 下載 wheel
+
+至 [Releases 頁面](https://github.com/frank0124p/xlsm-archaeologist/releases) 下載最新的 `.whl` 檔案，再手動安裝：
+
+```bash
+pip install xlsm_archaeologist-0.1.0-py3-none-any.whl
+```
+
+### 方法三：從原始碼（開發用）
+
+```bash
+git clone https://github.com/frank0124p/xlsm-archaeologist.git
+cd xlsm-archaeologist
+
+# 使用 pip
+pip install -e .
+
+# 或使用 uv（開發環境，含測試工具）
+uv sync --group dev
+```
+
 ---
 
 ## 快速開始
 
 ```bash
 # 分析一個 .xlsm 檔案（輸出到 ./archaeology_output/）
-uv run xlsm-archaeologist analyze MyFile.xlsm
+xlsm-archaeologist analyze MyFile.xlsm
 
 # 指定輸出目錄
-uv run xlsm-archaeologist analyze MyFile.xlsm --output ./my_output
+xlsm-archaeologist analyze MyFile.xlsm --output ./my_output
 
 # 快速預覽基本資訊（不寫檔）
-uv run xlsm-archaeologist inspect MyFile.xlsm
+xlsm-archaeologist inspect MyFile.xlsm
 ```
+
+> 如果是以 `uv sync` 安裝的開發環境，指令前需加 `uv run`，例如：`uv run xlsm-archaeologist analyze MyFile.xlsm`
 
 ---
 
@@ -65,7 +77,7 @@ uv run xlsm-archaeologist inspect MyFile.xlsm
 ### `analyze` — 完整分析
 
 ```
-uv run xlsm-archaeologist analyze [OPTIONS] INPUT_PATH
+xlsm-archaeologist analyze [OPTIONS] INPUT_PATH
 ```
 
 | 選項 | 說明 | 預設 |
@@ -329,6 +341,8 @@ src/xlsm_archaeologist/
 
 ```bash
 # 安裝含開發工具
+git clone https://github.com/frank0124p/xlsm-archaeologist.git
+cd xlsm-archaeologist
 uv sync --group dev
 
 # 執行測試
