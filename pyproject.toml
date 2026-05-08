@@ -1,6 +1,6 @@
 [project]
 name = "xlsm-archaeologist"
-version = "0.1.1"
+version = "0.1.2"
 description = "Archaeologize complex .xlsm files into structured JSON/CSV data"
 readme = "README.md"
 license = { text = "MIT" }
@@ -68,6 +68,9 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM"]
 ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/xlsm_archaeologist/reports/*_report.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

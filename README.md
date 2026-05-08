@@ -202,7 +202,10 @@ archaeology_output/
     ├── top_complex_formulas.csv  ← 複雜度排行榜 Top 50
     ├── hotspot_cells.csv         ← 被最多其他儲存格引用的格（hotspot 排行）
     ├── vba_behavior.csv          ← 每個 VBA 程序的讀寫行為摘要
-    └── cross_sheet_refs.csv      ← 所有跨工作表依賴邊
+    ├── cross_sheet_refs.csv      ← 所有跨工作表依賴邊
+    ├── architecture.md           ← 工作表架構圖（Mermaid 流程圖）
+    ├── data_flow.md              ← 每個工作表的角色與操作說明
+    └── integration.md            ← 下游系統串接指引（DB、API、LLM、表單）
 ```
 
 ### `00_summary.json` 欄位說明

@@ -12,9 +12,12 @@ from xlsm_archaeologist.extractors.named_range_extractor import extract_named_ra
 from xlsm_archaeologist.extractors.sheet_extractor import extract_sheets
 from xlsm_archaeologist.extractors.validation_extractor import extract_validations
 from xlsm_archaeologist.extractors.workbook_extractor import extract_workbook
+from xlsm_archaeologist.reports.architecture_report import build_architecture_md
 from xlsm_archaeologist.reports.cross_sheet_refs_report import build_cross_sheet_refs
+from xlsm_archaeologist.reports.data_flow_report import build_data_flow_md
 from xlsm_archaeologist.reports.formula_categories_report import build_categories_report
 from xlsm_archaeologist.reports.hotspot_cells_report import build_hotspot_cells
+from xlsm_archaeologist.reports.integration_report import build_integration_md
 from xlsm_archaeologist.reports.summary_builder import build_summary
 from xlsm_archaeologist.reports.top_complex_formulas_report import build_top_complex_formulas
 from xlsm_archaeologist.reports.vba_behavior_report import build_vba_behavior
@@ -366,6 +369,21 @@ def run_extraction(
             build_cross_sheet_refs(dep_edges),
             ["source_qualified_address", "source_sheet", "target_qualified_address",
              "target_sheet", "via", "via_detail"],
+        )
+
+        # Developer documentation reports
+        source_name = input_path.name
+        (reports_dir / "architecture.md").write_text(
+            build_architecture_md(sheets, dep_edges, formulas, vba_modules, source_name),
+            encoding="utf-8",
+        )
+        (reports_dir / "data_flow.md").write_text(
+            build_data_flow_md(sheets, cells, formulas, validations, dep_edges, vba_procedures, source_name),  # noqa: E501
+            encoding="utf-8",
+        )
+        (reports_dir / "integration.md").write_text(
+            build_integration_md(source_name, summary, sheets, validations, formulas, str(output_dir)),  # noqa: E501
+            encoding="utf-8",
         )
 
         bar.advance(task)
