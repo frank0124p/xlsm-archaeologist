@@ -852,7 +852,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/89/8d/7aad74930380c8972
 
 [[package]]
 name = "xlsm-archaeologist"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },

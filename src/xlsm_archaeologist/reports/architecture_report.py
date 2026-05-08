@@ -112,7 +112,7 @@ def build_architecture_md(
     # Build sheet detail table
     sheet_rows: list[str] = []
     for s in sheets:
-        c = classify(s.sheet_name) if s.is_hidden == "false" else "hidden"
+        c = "hidden" if s.is_hidden == "true" else classify(s.sheet_name)
         fc = formula_count.get(s.sheet_name, 0)
         out_count = sum(v for (src, _), v in cross.items() if src == s.sheet_name)
         in_count = sum(v for (_, tgt), v in cross.items() if tgt == s.sheet_name)
