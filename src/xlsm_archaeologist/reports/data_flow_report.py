@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from xlsm_archaeologist.models.cell import CellRecord, ValidationRecord
     from xlsm_archaeologist.models.dependency import DependencyEdge
     from xlsm_archaeologist.models.formula import FormulaRecord
-    from xlsm_archaeologist.models.vba import VBAProcedureRecord
+    from xlsm_archaeologist.models.vba import VbaModuleRecord, VbaProcedureRecord
     from xlsm_archaeologist.models.workbook import SheetRecord
 
 
@@ -23,14 +23,18 @@ def build_data_flow_md(
     formulas: list[FormulaRecord],
     validations: list[ValidationRecord],
     dep_edges: list[DependencyEdge],
-    vba_procedures: list[VBAProcedureRecord],
+    vba_procedures: list[VbaProcedureRecord],
     source_file: str,
+    vba_modules: list[VbaModuleRecord] | None = None,
 ) -> str:
     """Generate a developer-facing data flow document.
 
     Explains each sheet's role, key formulas, validations, and VBA interactions.
     Returns Markdown string for reports/data_flow.md.
     """
+    # Build module id → name lookup
+    module_name_by_id: dict[int, str] = {m.vba_module_id: m.module_name for m in (vba_modules or [])}
+
     # Group by sheet
     formulas_by_sheet: dict[str, list[FormulaRecord]] = defaultdict(list)
     for f in formulas:
@@ -137,10 +141,11 @@ def build_data_flow_md(
             "| 模組 | 程序 | 類型 | 讀取 cell 數 | 寫入 cell 數 | 動態 range |",
             "|---|---|---|---|---|---|",
         ]
-        for proc in sorted(vba_procedures, key=lambda p: (p.module_name, p.procedure_name)):
+        for proc in sorted(vba_procedures, key=lambda p: (module_name_by_id.get(p.vba_module_id, ""), p.procedure_name)):  # noqa: E501
+            mod_name = module_name_by_id.get(proc.vba_module_id, str(proc.vba_module_id))
             dynamic = "⚠️ 是" if proc.has_dynamic_range else "否"
             vba_lines.append(
-                f"| {proc.module_name} | {proc.procedure_name} | {proc.procedure_type} "
+                f"| {mod_name} | {proc.procedure_name} | {proc.procedure_type} "
                 f"| {len(proc.reads)} | {len(proc.writes)} | {dynamic} |"
             )
         vba_section = "\n".join(vba_lines)

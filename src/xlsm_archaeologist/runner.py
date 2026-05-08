@@ -378,7 +378,7 @@ def run_extraction(
             encoding="utf-8",
         )
         (reports_dir / "data_flow.md").write_text(
-            build_data_flow_md(sheets, cells, formulas, validations, dep_edges, vba_procedures, source_name),  # noqa: E501
+            build_data_flow_md(sheets, cells, formulas, validations, dep_edges, vba_procedures, source_name, vba_modules),  # noqa: E501
             encoding="utf-8",
         )
         (reports_dir / "integration.md").write_text(
