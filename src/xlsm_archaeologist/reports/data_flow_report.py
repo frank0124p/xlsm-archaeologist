@@ -53,10 +53,9 @@ def build_data_flow_md(
     vba_by_sheet: dict[str, list[str]] = defaultdict(list)
     for proc in vba_procedures:
         touched: set[str] = set()
-        for ref in proc.read_cells + proc.write_cells:
-            s = _sheet_from(ref)
-            if s:
-                touched.add(s)
+        for access in proc.reads + proc.writes:
+            if access.sheet:
+                touched.add(access.sheet)
         for s in touched:
             vba_by_sheet[s].append(proc.procedure_name)
 
@@ -142,7 +141,7 @@ def build_data_flow_md(
             dynamic = "⚠️ 是" if proc.has_dynamic_range else "否"
             vba_lines.append(
                 f"| {proc.module_name} | {proc.procedure_name} | {proc.procedure_type} "
-                f"| {len(proc.read_cells)} | {len(proc.write_cells)} | {dynamic} |"
+                f"| {len(proc.reads)} | {len(proc.writes)} | {dynamic} |"
             )
         vba_section = "\n".join(vba_lines)
 
