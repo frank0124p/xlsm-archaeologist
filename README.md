@@ -44,12 +44,14 @@ xlsm-archaeologist version
 
 預期輸出：
 ```
-xlsm-archaeologist 0.1.0
+xlsm-archaeologist 0.1.1
 schema_version: 1.0
 python: 3.12.x
 openpyxl: 3.1.x
 oletools: 0.60.x
 ```
+
+> **Windows 用戶注意**：若出現 `not recognized as the name of a cmdlet` 錯誤，請見下方 [Windows PATH 設定](#windows-path-設定)。
 
 ---
 
@@ -69,6 +71,41 @@ pip install xlsm_archaeologist-0.1.1-py3-none-any.whl
 git clone https://github.com/frank0124p/xlsm-archaeologist.git
 cd xlsm-archaeologist
 pip install -e ".[dev]"
+```
+
+---
+
+## Windows PATH 設定
+
+安裝後在 Windows 出現 `not recognized as the name of a cmdlet` 時，代表 pip 的 Scripts 資料夾尚未加入 PATH。
+
+**方法一：加入系統 PATH（一勞永逸）**
+
+在 PowerShell 執行，找出 Scripts 路徑：
+
+```powershell
+python -c "import sys, os; print(os.path.join(os.path.dirname(sys.executable), 'Scripts'))"
+```
+
+輸出類似：
+```
+C:\Users\你的名字\AppData\Local\Programs\Python\Python312\Scripts
+```
+
+把這個路徑加入系統 PATH：
+1. 搜尋「編輯系統環境變數」
+2. 點「環境變數」→ 選取「Path」→「編輯」→「新增」
+3. 貼上上面的路徑 → 確定
+4. 重新開啟 PowerShell
+
+之後即可直接使用 `xlsm-archaeologist` 指令。
+
+**方法二：用 `python -m` 執行（不需改 PATH）**
+
+```powershell
+python -m xlsm_archaeologist analyze 你的檔案.xlsm
+python -m xlsm_archaeologist version
+python -m xlsm_archaeologist inspect 你的檔案.xlsm
 ```
 
 ---
